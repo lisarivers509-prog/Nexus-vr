@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusVR - Next-Gen PCVR Remote Streaming & Control Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js for real-time latency & performance graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            bg: '#080b12',
+                            panel: 'rgba(15, 23, 42, 0.75)',
+                            border: '#1e293b',
+                            accent: '#00f0ff',
+                            purple: '#7000ff',
+                            pink: '#ff007f',
+                            success: '#00ff88',
+                            warning: '#ffb700',
+                            danger: '#ff2a55'
+                        }
+                    },
+                    fontFamily: {
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        rajdhani: ['Rajdhani', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #05070d;
+            background-image: 
+                radial-gradient(circle at 15% 20%, rgba(0, 240, 255, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 85% 80%, rgba(112, 0, 255, 0.08) 0%, transparent 40%),
+                linear-gradient(to bottom, rgba(5, 7, 13, 0.8), rgba(5, 7, 13, 0.95));
+            color: #e2e8f0;
+            font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism Styling */
+        .glass-card {
+            background: rgba(13, 19, 33, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 240, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-card-glow {
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.15);
+        }
+
+        /* Custom Neon Glows */
+        .neon-text-cyan {
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+        }
+        .neon-text-purple {
+            text-shadow: 0 0 8px rgba(112, 0, 255, 0.6);
+        }
+        .neon-border-cyan {
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00f0ff;
+        }
+
+        /* Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #00f0ff;
+            cursor: pointer;
+            box-shadow: 0 0 10px #00f0ff;
+            margin-top: -6px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #1e293b;
+            border-radius: 3px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+        }
+
+        /* Pulse Animations */
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(1000%); }
+        }
+        .scanline-effect {
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.8), transparent);
+            animation: scanline 8s linear infinite;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* VR Stream Grid Lines */
+        .cyber-grid {
+            background-size: 30px 30px;
+            background-image: 
+                linear-gradient(to right, rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col cyber-grid">
+
+    <!-- Top Navigation Header -->
+    <header class="glass-card sticky top-0 z-50 border-b border-cyber-border px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+            
+            <!-- Logo & Status -->
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-cyan-500/10 rounded-lg border border-cyan-500/30 text-cyan-400">
+                    <i data-lucide="headset" class="w-6 h-6 animate-pulse"></i>
+                </div>
+                <div>
+                    <h1 class="font-orbitron font-bold text-xl tracking-wider text-white flex items-center gap-2">
+                        NEXUS<span class="text-cyan-400">VR</span> STREAM
+                        <span class="text-xs px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono">v3.4 PRO</span>
+                    </h1>
+                    <p class="text-xs text-slate-400 font-mono">Low-Spec Specs-Agnostic Engine active</p>
+                </div>
+            </div>
+
+            <!-- Quick Mode Select & Preset Toggle -->
+            <div class="flex items-center space-x-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-800">
+                <button id="preset-low" onclick="setPerformancePreset('low')" class="px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wider transition-all duration-200 text-slate-400 hover:text-white">
+                    <i data-lucide="zap" class="w-3.5 h-3.5 inline mr-1 text-yellow-400"></i>ULTRA LOW SPEC
+                </button>
+                <button id="preset-bal" onclick="setPerformancePreset('balanced')" class="px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wider transition-all duration-200 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                    <i data-lucide="sliders" class="w-3.5 h-3.5 inline mr-1"></i>BALANCED
+                </button>
+                <button id="preset-high" onclick="setPerformancePreset('high')" class="px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wider transition-all duration-200 text-slate-400 hover:text-white">
+                    <i data-lucide="cpu" class="w-3.5 h-3.5 inline mr-1 text-purple-400"></i>ULTRA GRAPHICS
+                </button>
+            </div>
+
+            <!-- Global Connection & Audio Controls -->
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800">
+                    <span id="connection-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span id="connection-status-text" class="text-xs font-mono font-bold text-emerald-400">CONNECTED (Wi-Fi 6E)</span>
+                </div>
+
+                <button id="btn-audio-toggle" onclick="toggleAudioFeedback()" class="p-2 rounded-lg bg-slate-800/80 hover:bg-cyan-500/20 border border-slate-700 text-slate-300 hover:text-cyan-400 transition" title="Toggle UI Sound Effects">
+                    <i data-lucide="volume-2" id="icon-audio" class="w-4 h-4"></i>
+                </button>
+
+                <button onclick="triggerSpeedTest()" class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs tracking-wider flex items-center space-x-1.5 shadow-lg shadow-cyan-500/20 transition">
+                    <i data-lucide="gauge" class="w-4 h-4"></i>
+                    <span>RUN SPEED TEST</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT SIDE: Live Monitor Viewport & Hardware Controls (8 Columns) -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+
+            <!-- Virtual Desktop Screen & Remote Viewport -->
+            <div class="glass-card rounded-2xl overflow-hidden border border-cyan-500/30 relative flex flex-col shadow-2xl">
+                <!-- Screen Header Bar -->
+                <div class="bg-slate-950/80 px-4 py-2.5 border-b border-slate-800 flex justify-between items-center">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+                        <span class="w-3 h-3 rounded-full bg-yellow-500 inline-block"></span>
+                        <span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span>
+                        <span class="text-xs font-mono text-slate-400 ml-2 flex items-center gap-1.5">
+                            <i data-lucide="monitor" class="w-3.5 h-3.5 text-cyan-400"></i>
+                            VIRTUAL REMOTE DESKTOP MIRROR [DISPLAY #1]
+                        </span>
+                    </div>
+                    <div class="flex items-center space-x-3 text-xs font-mono">
+                        <span class="text-cyan-400 flex items-center gap-1">
+                            <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+                            <span id="display-fps-counter">90.2 FPS</span>
+                        </span>
+                        <span class="text-slate-500">|</span>
+                        <span class="text-slate-300" id="display-res-indicator">2560x1440 (120%)</span>
+                        <button onclick="toggleFullscreenCanvas()" class="text-slate-400 hover:text-cyan-400 transition ml-2">
+                            <i data-lucide="maximize-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Simulated Interactive Desktop Canvas -->
+                <div class="relative bg-black h-80 sm:h-96 w-full flex items-center justify-center overflow-hidden group" id="viewport-container">
+                    <div class="scanline-effect"></div>
+                    
+                    <!-- Simulated Remote Desktop Canvas Graphics -->
+                    <canvas id="virtual-desktop-canvas" class="w-full h-full object-cover cursor-crosshair"></canvas>
+
+                    <!-- Interactive Desktop Overlay Controls -->
+                    <div class="absolute bottom-4 left-4 right-4 bg-slate-900/90 backdrop-filter blur-md p-3 rounded-xl border border-slate-700/80 flex flex-wrap justify-between items-center gap-3 opacity-95 group-hover:opacity-100 transition-opacity">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs font-semibold text-slate-300">STREAM QUALITY:</span>
+                            <button onclick="setFramerate(60)" id="fps-btn-60" class="px-2.5 py-1 text-xs rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700">60 FPS</button>
+                            <button onclick="setFramerate(90)" id="fps-btn-90" class="px-2.5 py-1 text-xs rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 font-bold">90 FPS</button>
+                            <button onclick="setFramerate(120)" id="fps-btn-120" class="px-2.5 py-1 text-xs rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700">120 FPS</button>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <label class="text-xs font-semibold text-slate-300 flex items-center gap-1">
+                                <span>BITRATE:</span>
+                                <span id="bitrate-val" class="text-cyan-400 font-mono font-bold">95 Mbps</span>
+                            </label>
+                            <input type="range" id="bitrate-slider" min="10" max="200" value="95" oninput="updateBitrate(this.value)" class="w-28 sm:w-36">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Real-time Metrics Telemetry Ribbon -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 border-t border-slate-800 bg-slate-950/90 divide-x divide-slate-800/80 text-center py-2.5">
+                    <div>
+                        <div class="text-[10px] uppercase tracking-widest text-slate-400">Total Latency</div>
+                        <div class="text-sm font-mono font-bold text-cyan-400" id="metric-latency">18.4 ms</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase tracking-widest text-slate-400">Encode / Decode</div>
+                        <div class="text-sm font-mono font-bold text-slate-200" id="metric-enc-dec">4.1ms / 2.8ms</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase tracking-widest text-slate-400">Network Ping</div>
+                        <div class="text-sm font-mono font-bold text-emerald-400" id="metric-ping">3.2 ms</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase tracking-widest text-slate-400">Frame Drops</div>
+                        <div class="text-sm font-mono font-bold text-slate-200" id="metric-drops">0.01%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Connection & Transcoding Pipeline Engine (Low-Spec Hardware Agnostic Controls) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Protocol & Tethering Options -->
+                <div class="glass-card p-5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-orbitron font-bold text-base text-white flex items-center gap-2">
+                                <i data-lucide="wifi" class="w-5 h-5 text-cyan-400"></i>
+                                STREAM PROTOCOL
+                            </h3>
+                            <span class="text-xs text-slate-400 font-mono" id="protocol-bandwidth-label">5.8 GHz Band</span>
+                        </div>
+
+                        <!-- Protocol Switcher Buttons -->
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <button id="proto-wifi" onclick="setProtocol('wifi')" class="p-3 rounded-xl border border-cyan-500/50 bg-cyan-500/10 text-cyan-300 flex flex-col items-center justify-center text-center transition">
+                                <i data-lucide="wifi" class="w-6 h-6 mb-1 text-cyan-400"></i>
+                                <span class="text-xs font-bold font-orbitron">Wi-Fi 6E / LAN</span>
+                                <span class="text-[10px] text-slate-400">Ultra-Low UDP</span>
+                            </button>
+                            <button id="proto-usb" onclick="setProtocol('usb')" class="p-3 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white flex flex-col items-center justify-center text-center transition">
+                                <i data-lucide="cable" class="w-6 h-6 mb-1"></i>
+                                <span class="text-xs font-bold font-orbitron">USB 3.2 LINK</span>
+                                <span class="text-[10px] text-slate-400">Direct Tethered</span>
+                            </button>
+                        </div>
+
+                        <!-- Protocol Status Summary -->
+                        <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-xs space-y-2 font-mono">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Tether Bandwidth:</span>
+                                <span class="text-cyan-400 font-bold" id="bandwidth-val">2.4 Gbps Sync</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Packet Loss Rate:</span>
+                                <span class="text-emerald-400 font-bold" id="packet-loss-val">0.000%</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Host Hardware Load:</span>
+                                <span class="text-yellow-400 font-bold" id="host-cpu-val">CPU: 14% | GPU: 32%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="runUSBBenchmark()" class="w-full mt-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg border border-slate-700 flex items-center justify-center gap-2 transition">
+                        <i data-lucide="play" class="w-3.5 h-3.5 text-cyan-400"></i>
+                        <span>TEST USB / LAN SPEED & JITTER</span>
+                    </button>
+                </div>
+
+                <!-- Codec & Low-Spec Optimization Engine -->
+                <div class="glass-card p-5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-orbitron font-bold text-base text-white flex items-center gap-2">
+                                <i data-lucide="cpu" class="w-5 h-5 text-purple-400"></i>
+                                TRANSCODING ENGINE
+                            </h3>
+                            <span class="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono">CLOUD-ASSIST READY</span>
+                        </div>
+
+                        <div class="space-y-3 text-xs">
+                            <!-- Codec Selection -->
+                            <div>
+                                <label class="text-slate-400 mb-1 block font-semibold">Video Codec Pipeline:</label>
+                                <select id="codec-select" onchange="updateCodec(this.value)" class="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-lg p-2 font-mono focus:border-cyan-400 focus:outline-none">
+                                    <option value="av1">AV1 (Next-Gen Ultra Compression - Low Specs Best)</option>
+                                    <option value="hevc" selected>HEVC / H.265 (High Efficiency Low Latency)</option>
+                                    <option value="h264">H.264 (Universal Legacy / Broad Hardware Support)</option>
+                                </select>
+                            </div>
+
+                            <!-- Upscaling Engine Toggle -->
+                            <div class="flex items-center justify-between p-2.5 bg-slate-900/80 rounded-xl border border-slate-800">
+                                <div>
+                                    <div class="font-semibold text-slate-200">FSR / Spatial Upscaler</div>
+                                    <div class="text-[10px] text-slate-400">Renders low-res on host, upscales in VR headset</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="fsr-toggle" checked onchange="toggleFSR(this.checked)" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- Dynamic Resolution Scaling -->
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-slate-400 font-semibold">Render Resolution Scale:</span>
+                                    <span id="res-scale-val" class="text-purple-400 font-mono font-bold">100% (Dynamic)</span>
+                                </div>
+                                <input type="range" id="res-scale-slider" min="60" max="150" value="100" step="10" oninput="updateResScale(this.value)" class="w-full">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 p-2 bg-purple-950/30 rounded-lg border border-purple-500/20 text-[11px] text-purple-200/80 flex items-start gap-2">
+                        <i data-lucide="info" class="w-4 h-4 text-purple-400 shrink-0 mt-0.5"></i>
+                        <span>Low-spec PCs are automatically boosted via dynamic pixel reduction & host-side zero-copy memory buffers.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Launcher for PCVR Titles -->
+            <div class="glass-card p-5 rounded-2xl">
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+                    <div>
+                        <h3 class="font-orbitron font-bold text-lg text-white flex items-center gap-2">
+                            <i data-lucide="gamepad-2" class="w-5 h-5 text-cyan-400"></i>
+                            PCVR LIBRARY & QUICK LAUNCH
+                        </h3>
+                        <p class="text-xs text-slate-400">One-click remote execution with auto-hardware optimization profiles</p>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <button onclick="filterGames('all')" class="px-2.5 py-1 text-xs rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">ALL</button>
+                        <button onclick="filterGames('steamvr')" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 text-slate-400 hover:text-white">STEAMVR</button>
+                        <button onclick="filterGames('oculus')" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 text-slate-400 hover:text-white">META RIFT</button>
+                    </div>
+                </div>
+
+                <!-- Games Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" id="games-grid">
+                    <!-- Dynamic Game Cards Inserted Here -->
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- RIGHT SIDE: VR Client Hub, Controller Input Tester & Real-Time Analytics (4 Columns) -->
+        <div class="lg:col-span-4 flex flex-col gap-6">
+
+            <!-- Headset Discovery & Pairing Hub -->
+            <div class="glass-card p-5 rounded-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-orbitron font-bold text-base text-white flex items-center gap-2">
+                        <i data-lucide="headset" class="w-5 h-5 text-cyan-400"></i>
+                        HEADSET CLIENT PAIRING
+                    </h3>
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" title="Device Listening"></span>
+                </div>
+
+                <!-- Direct IP Input Section -->
+                <div class="mb-4 bg-slate-900/90 rounded-xl p-3.5 border border-slate-800 space-y-2">
+                    <label class="text-xs font-semibold text-slate-300 flex justify-between items-center">
+                        <span>Direct VR IP Address:</span>
+                        <span onclick="autoDetectIP()" class="text-[10px] text-cyan-400 hover:underline cursor-pointer">Auto-Detect</span>
+                    </label>
+                    <div class="flex space-x-2">
+                        <input type="text" id="vr-ip-input" value="192.168.1.142" class="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-3 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-400">
+                        <button onclick="connectIP()" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs uppercase transition">
+                            Link
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active Connected Device Card -->
+                <div class="bg-slate-900/90 rounded-xl p-4 border border-cyan-500/30 mb-4 relative overflow-hidden">
+                    <div class="absolute -right-4 -bottom-4 opacity-10">
+                        <i data-lucide="headset" class="w-32 h-32 text-cyan-400"></i>
+                    </div>
+                    
+                    <div class="flex items-start justify-between relative z-10">
+                        <div>
+                            <div class="text-xs text-cyan-400 font-mono font-bold uppercase tracking-wider">Active Client</div>
+                            <div class="text-lg font-bold text-white font-orbitron" id="device-model-name">Meta Quest 3 / Pro</div>
+                            <div class="text-xs text-slate-400 font-mono mt-0.5" id="device-ip-address">IP: 192.168.1.142 (Wi-Fi 6)</div>
+                        </div>
+                        <div class="bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-2 py-1 rounded text-xs font-mono font-bold">
+                            90 Hz
+                        </div>
+                    </div>
+
+                    <div class="mt-4 grid grid-cols-2 gap-2 text-xs font-mono pt-3 border-t border-slate-800">
+                        <div>
+                            <span class="text-slate-400">Battery Level:</span>
+                            <span class="text-emerald-400 font-bold ml-1" id="device-battery">88% ⚡</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400">Client Ping:</span>
+                            <span class="text-cyan-400 font-bold ml-1" id="device-ping">3ms</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pairing Code Generator Section -->
+                <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 text-center">
+                    <div class="text-xs text-slate-400 mb-1">Enter code on NexusVR Quest / PC Client App</div>
+                    <div class="text-2xl font-mono font-bold tracking-widest text-cyan-400 my-1.5 selection:bg-cyan-500 selection:text-black" id="pairing-code">
+                        892 - 401
+                    </div>
+                    <button onclick="generateNewPairingCode()" class="text-[11px] text-slate-400 hover:text-cyan-400 flex items-center justify-center gap-1 mx-auto transition">
+                        <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                        <span>Generate New Security PIN</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Controller Tracking & Input Tester -->
+            <div class="glass-card p-5 rounded-2xl">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-orbitron font-bold text-base text-white flex items-center gap-2">
+                        <i data-lucide="gamepad" class="w-5 h-5 text-purple-400"></i>
+                        CONTROLLER INPUT TESTER
+                    </h3>
+                    <span class="text-xs text-slate-400 font-mono">6-DOF Active</span>
+                </div>
+
+                <p class="text-xs text-slate-400 mb-4">Move your mouse or touch the stick area below to simulate VR controller telemetry</p>
+
+                <!-- Simulated VR Controllers Visualization -->
+                <div class="grid grid-cols-2 gap-3">
+                    <!-- Left Controller -->
+                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-center relative group">
+                        <div class="text-xs font-bold text-slate-300 mb-2 font-orbitron">LEFT CONTROLLER</div>
+                        
+                        <!-- Analog Stick Area -->
+                        <div id="stick-left-area" class="w-16 h-16 rounded-full bg-slate-950 border border-slate-700 mx-auto relative flex items-center justify-center mb-3 cursor-pointer">
+                            <div id="stick-left-dot" class="w-5 h-5 rounded-full bg-cyan-400 shadow-lg shadow-cyan-500/50 absolute transition-all duration-75"></div>
+                        </div>
+
+                        <!-- Triggers Pressure Bar -->
+                        <div class="space-y-1.5 text-[10px] font-mono text-left">
+                            <div>
+                                <div class="flex justify-between text-slate-400"><span>TRIGGER:</span> <span id="left-trig-val" class="text-cyan-400">0%</span></div>
+                                <div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                                    <div id="left-trig-bar" class="bg-cyan-400 h-full w-0 transition-all"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-slate-400"><span>GRIP:</span> <span id="left-grip-val" class="text-purple-400">0%</span></div>
+                                <div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                                    <div id="left-grip-bar" class="bg-purple-400 h-full w-0 transition-all"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Button Press Displays -->
+                        <div class="flex justify-center space-x-2 mt-3">
+                            <span id="btn-x" class="px-2 py-0.5 bg-slate-800 text-slate-400 rounded text-[10px] font-bold border border-slate-700">X</span>
+                            <span id="btn-y" class="px-2 py-0.5 bg-slate-800 text-slate-400 rounded text-[10px] font-bold border border-slate-700">Y</span>
+                        </div>
+                    </div>
+
+                    <!-- Right Controller -->
+                    <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-center relative group">
+                        <div class="text-xs font-bold text-slate-300 mb-2 font-orbitron">RIGHT CONTROLLER</div>
+                        
+                        <!-- Analog Stick Area -->
+                        <div id="stick-right-area" class="w-16 h-16 rounded-full bg-slate-950 border border-slate-700 mx-auto relative flex items-center justify-center mb-3 cursor-pointer">
+                            <div id="stick-right-dot" class="w-5 h-5 rounded-full bg-purple-400 shadow-lg shadow-purple-500/50 absolute transition-all duration-75"></div>
+                        </div>
+
+                        <!-- Triggers Pressure Bar -->
+                        <div class="space-y-1.5 text-[10px] font-mono text-left">
+                            <div>
+                                <div class="flex justify-between text-slate-400"><span>TRIGGER:</span> <span id="right-trig-val" class="text-cyan-400">0%</span></div>
+                                <div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                                    <div id="right-trig-bar" class="bg-cyan-400 h-full w-0 transition-all"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-slate-400"><span>GRIP:</span> <span id="right-grip-val" class="text-purple-400">0%</span></div>
+                                <div class="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                                    <div id="right-grip-bar" class="bg-purple-400 h-full w-0 transition-all"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Button Press Displays -->
+                        <div class="flex justify-center space-x-2 mt-3">
+                            <span id="btn-a" class="px-2 py-0.5 bg-slate-800 text-slate-400 rounded text-[10px] font-bold border border-slate-700">A</span>
+                            <span id="btn-b" class="px-2 py-0.5 bg-slate-800 text-slate-400 rounded text-[10px] font-bold border border-slate-700">B</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="triggerHapticFeedback()" class="w-full mt-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 text-xs font-semibold rounded-lg border border-purple-500/40 flex items-center justify-center gap-1.5 transition">
+                    <i data-lucide="vibrate" class="w-3.5 h-3.5"></i>
+                    <span>TEST CONTROLLER HAPTICS & VIBRATION</span>
+                </button>
+            </div>
+
+            <!-- Real-Time Frame Timing & Jitter Graph -->
+            <div class="glass-card p-5 rounded-2xl flex-1 flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-orbitron font-bold text-base text-white flex items-center gap-2">
+                            <i data-lucide="line-chart" class="w-5 h-5 text-cyan-400"></i>
+                            FRAME TIMING & JITTER
+                        </h3>
+                        <span class="text-[10px] text-emerald-400 font-mono">0 FRAME DROPS</span>
+                    </div>
+
+                    <!-- Chart Canvas -->
+                    <div class="w-full h-36 relative">
+                        <canvas id="performance-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-800 grid grid-cols-2 gap-2 text-center text-xs font-mono">
+                    <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                        <div class="text-[10px] text-slate-400">ENCODE LATENCY</div>
+                        <div class="text-cyan-400 font-bold" id="graph-encode-val">3.8 ms</div>
+                    </div>
+                    <div class="bg-slate-900/60 p-2 rounded-lg border border-slate-800">
+                        <div class="text-[10px] text-slate-400">NETWORK JITTER</div>
+                        <div class="text-purple-400 font-bold" id="graph-jitter-val">± 0.4 ms</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer Status Notification -->
+    <footer class="border-t border-slate-800/80 bg-slate-950/90 py-3 px-6 text-xs text-slate-400 font-mono flex flex-wrap justify-between items-center gap-2">
+        <div class="flex items-center space-x-3">
+            <span class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                WebRTC DataChannel: Active
+            </span>
+            <span>|</span>
+            <span>OpenXR Driver: Runtime v1.2.8 Loaded</span>
+        </div>
+        <div>
+            NexusVR Client Engine &copy; 2026 • Optimized for Low Spec & High Spec PCVR
+        </div>
+    </footer>
+
+
+    <!-- Application Logic & Interactive Simulation Script -->
+    <script>
+        // Global State Management
+        const state = {
+            preset: 'balanced', // 'low', 'balanced', 'high'
+            protocol: 'wifi',   // 'wifi', 'usb'
+            fps: 90,
+            bitrate: 95,
+            codec: 'hevc',
+            fsrEnabled: true,
+            resScale: 100,
+            audioFeedback: true,
+            isConnected: true,
+            stats: {
+                latency: 18.4,
+                encode: 4.1,
+                decode: 2.8,
+                ping: 3.2,
+                frameDrops: 0.01,
+                bandwidthGbps: 2.4
+            }
+        };
+
+        // PCVR Titles Database
+        const pcvrGames = [
+            { id: 1, title: 'Half-Life: Alyx', category: 'steamvr', spec: 'Ultra Optimized', icon: 'zap', color: 'from-amber-500 to-orange-600', playtime: '42 hrs' },
+            { id: 2, title: 'Beat Saber', category: 'steamvr', spec: '60 FPS Ultra-Low Ready', icon: 'music', color: 'from-cyan-500 to-blue-600', playtime: '128 hrs' },
+            { id: 3, title: 'BONELAB', category: 'steamvr', spec: 'Physics Heavy', icon: 'box', color: 'from-purple-500 to-indigo-600', playtime: '19 hrs' },
+            { id: 4, title: 'Lone Echo II', category: 'oculus', spec: 'VRAM Intensive', icon: 'globe', color: 'from-blue-600 to-teal-500', playtime: '15 hrs' },
+            { id: 5, title: 'MS Flight Simulator VR', category: 'steamvr', spec: 'FSR Upscaling Recommended', icon: 'plane', color: 'from-emerald-500 to-teal-700', playtime: '64 hrs' },
+            { id: 6, title: 'VRChat', category: 'steamvr', spec: 'CPU Agnostic Profile', icon: 'users', color: 'from-pink-500 to-purple-600', playtime: '310 hrs' }
+        ];
+
+        // Web Audio API Sound Synthesizer for UI Effects
+        let audioCtx = null;
+
+        function playSound(type) {
+            if (!state.audioFeedback) return;
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.exponentialRampToValueAtTime(400, now + 0.05);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'launch') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(900, now + 0.2);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if (type === 'haptic') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(150, now);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                }
+            } catch (e) {
+                console.log('Audio error:', e);
+            }
+        }
+
+        function toggleAudioFeedback() {
+            state.audioFeedback = !state.audioFeedback;
+            const icon = document.getElementById('icon-audio');
+            const btn = document.getElementById('btn-audio-toggle');
+            if (state.audioFeedback) {
+                icon.setAttribute('data-lucide', 'volume-2');
+                btn.classList.remove('text-slate-500');
+                btn.classList.add('text-slate-300');
+                playSound('click');
+            } else {
+                icon.setAttribute('data-lucide', 'volume-x');
+                btn.classList.add('text-slate-500');
+            }
+            lucide.createIcons();
+        }
+
+        // Render PCVR Games Grid
+        function renderGamesGrid(filter = 'all') {
+            const container = document.getElementById('games-grid');
+            container.innerHTML = '';
+
+            const filtered = filter === 'all' ? pcvrGames : pcvrGames.filter(g => g.category === filter);
+
+            filtered.forEach(game => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/90 rounded-xl p-3.5 border border-slate-800 hover:border-cyan-500/50 transition-all duration-300 flex flex-col justify-between group';
+                
+                card.innerHTML = `
+                    <div>
+                        <div class="h-24 rounded-lg bg-gradient-to-br ${game.color} p-3 flex flex-col justify-between relative overflow-hidden mb-3">
+                            <div class="absolute -right-3 -bottom-3 opacity-20 group-hover:scale-110 transition-transform">
+                                <i data-lucide="${game.icon}" class="w-20 h-20 text-white"></i>
+                            </div>
+                            <span class="text-[10px] font-mono font-bold bg-black/40 text-white px-2 py-0.5 rounded self-start border border-white/10 uppercase">
+                                ${game.category}
+                            </span>
+                            <div class="font-orbitron font-bold text-white text-base leading-tight drop-shadow">
+                                ${game.title}
+                            </div>
+                        </div>
+
+                        <div class="space-y-1 text-xs mb-3">
+                            <div class="flex justify-between text-slate-400">
+                                <span>Optimization Profile:</span>
+                                <span class="text-cyan-400 font-semibold">${game.spec}</span>
+                            </div>
+                            <div class="flex justify-between text-slate-400">
+                                <span>Played Time:</span>
+                                <span class="text-slate-300 font-mono">${game.playtime}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="launchGame('${game.title}')" class="w-full py-2 bg-slate-800 group-hover:bg-cyan-500 group-hover:text-slate-950 text-slate-200 text-xs font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 border border-slate-700 group-hover:border-cyan-400">
+                        <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                        <span>LAUNCH IN VR</span>
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+
+            lucide.createIcons();
+        }
+
+        function filterGames(category) {
+            playSound('click');
+            renderGamesGrid(category);
+        }
+
+        function launchGame(title) {
+            playSound('launch');
+            showToast(`Launching ${title} on host PCVR server... Streaming pipeline locked.`);
+        }
+
+        // Performance Preset Toggle Controls
+        function setPerformancePreset(preset) {
+            playSound('click');
+            state.preset = preset;
+
+            const btnLow = document.getElementById('preset-low');
+            const btnBal = document.getElementById('preset-bal');
+            const btnHigh = document.getElementById('preset-high');
+
+            [btnLow, btnBal, btnHigh].forEach(b => {
+                b.className = "px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wider transition-all duration-200 text-slate-400 hover:text-white";
+            });
+
+            if (preset === 'low') {
+                btnLow.className = "px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wider transition-all duration-200 bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 font-bold";
+                setFramerate(60);
+                updateBitrate(45);
+                updateResScale(70);
+                document.getElementById('codec-select').value = 'av1';
+                updateCodec('av1');
+                showToast('Ultra Low Spec Mode Activated: Transcoding adjusted for integrated graphics / older CPUs.');
+            } else if (preset === 'balanced') {
+                btnBal.className = "px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wider transition-all duration-200 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold";
+                setFramerate(90);
+                updateBitrate(95);
+                updateResScale(100);
+                document.getElementById('codec-select').value = 'hevc';
+                updateCodec('hevc');
+                showToast('Balanced VR Profile Loaded.');
+            } else if (preset === 'high') {
+                btnHigh.className = "px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wider transition-all duration-200 bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold";
+                setFramerate(120);
+                updateBitrate(160);
+                updateResScale(130);
+                document.getElementById('codec-select').value = 'hevc';
+                updateCodec('hevc');
+                showToast('Ultra Performance Profile Activated: High Bitrate & 120Hz locked.');
+            }
+        }
+
+        // Interactive Viewport Settings Toggles
+        function setFramerate(fps) {
+            playSound('click');
+            state.fps = fps;
+
+            [60, 90, 120].forEach(val => {
+                const btn = document.getElementById(`fps-btn-${val}`);
+                if (val === fps) {
+                    btn.className = "px-2.5 py-1 text-xs rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 font-bold";
+                } else {
+                    btn.className = "px-2.5 py-1 text-xs rounded bg-slate-800 text-slate-400 hover:text-white border border-slate-700";
+                }
+            });
+
+            document.getElementById('display-fps-counter').innerText = `${fps}.0 FPS`;
+            updateTelemetrySim();
+        }
+
+        function updateBitrate(val) {
+            state.bitrate = val;
+            document.getElementById('bitrate-val').innerText = `${val} Mbps`;
+            document.getElementById('bitrate-slider').value = val;
+            updateTelemetrySim();
+        }
+
+        function updateResScale(val) {
+            state.resScale = val;
+            document.getElementById('res-scale-val').innerText = `${val}%`;
+            document.getElementById('res-scale-slider').value = val;
+            const resW = Math.round(2160 * (val / 100));
+            const resH = Math.round(1200 * (val / 100));
+            document.getElementById('display-res-indicator').innerText = `${resW}x${resH} (${val}%)`;
+        }
+
+        function updateCodec(codec) {
+            playSound('click');
+            state.codec = codec;
+            showToast(`Transcoder switched to ${codec.toUpperCase()} stream pipeline.`);
+        }
+
+        function toggleFSR(enabled) {
+            playSound('click');
+            state.fsrEnabled = enabled;
+            showToast(`AMD FSR Spatial Upscaler: ${enabled ? 'ENABLED' : 'DISABLED'}`);
+        }
+
+        // Stream Protocol Selector
+        function setProtocol(proto) {
+            playSound('click');
+            state.protocol = proto;
+            const btnWifi = document.getElementById('proto-wifi');
+            const btnUsb = document.getElementById('proto-usb');
+            const labelBandwidth = document.getElementById('protocol-bandwidth-label');
+
+            if (proto === 'wifi') {
+                btnWifi.className = "p-3 rounded-xl border border-cyan-500/50 bg-cyan-500/10 text-cyan-300 flex flex-col items-center justify-center text-center transition";
+                btnUsb.className = "p-3 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white flex flex-col items-center justify-center text-center transition";
+                labelBandwidth.innerText = "5.8 GHz Wi-Fi 6E";
+                document.getElementById('bandwidth-val').innerText = "1.2 Gbps Wireless";
+                document.getElementById('connection-status-text').innerText = "CONNECTED (Wi-Fi 6E)";
+                showToast('Switched to WebRTC Wireless Low-Latency Streaming Mode.');
+            } else {
+                btnUsb.className = "p-3 rounded-xl border border-cyan-500/50 bg-cyan-500/10 text-cyan-300 flex flex-col items-center justify-center text-center transition";
+                btnWifi.className = "p-3 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white flex flex-col items-center justify-center text-center transition";
+                labelBandwidth.innerText = "USB 3.2 Gen 2 Optical";
+                document.getElementById('bandwidth-val').innerText = "2.8 Gbps Direct Link";
+                document.getElementById('connection-status-text').innerText = "CONNECTED (USB 3.2 LINK)";
+                showToast('Switched to Tethered USB Link Streaming Cable Mode.');
+            }
+            updateTelemetrySim();
+        }
+
+        function autoDetectIP() {
+            playSound('click');
+            document.getElementById('vr-ip-input').value = '192.168.1.185';
+            showToast('Found headset on local subnet: 192.168.1.185');
+        }
+
+        function connectIP() {
+            playSound('click');
+            const ip = document.getElementById('vr-ip-input').value;
+            document.getElementById('device-ip-address').innerText = `IP: ${ip} (${state.protocol === 'usb' ? 'USB Link' : 'Wi-Fi 6'})`;
+            showToast(`Target Headset IP updated to ${ip}`);
+        }
+
+        function runUSBBenchmark() {
+            playSound('click');
+            showToast('Benchmarking connection throughput & packet jitter...');
+            setTimeout(() => {
+                const speed = (Math.random() * 0.6 + 2.4).toFixed(2);
+                showToast(`Speed Test Complete! Measured Throughput: ${speed} Gbps. Jitter: 0.2ms.`);
+            }, 1200);
+        }
+
+        function generateNewPairingCode() {
+            playSound('click');
+            const part1 = Math.floor(100 + Math.random() * 900);
+            const part2 = Math.floor(100 + Math.random() * 900);
+            document.getElementById('pairing-code').innerText = `${part1} - ${part2}`;
+            showToast('Generated new Quest / VR client security pairing code.');
+        }
+
+        function triggerHapticFeedback() {
+            playSound('haptic');
+            showToast('Sent haptic pulse (0.85 intensity, 150ms) to left & right VR controllers.');
+        }
+
+        // Live Dynamic Canvas Desktop Graphics Simulation
+        function initVirtualCanvas() {
+            const canvas = document.getElementById('virtual-desktop-canvas');
+            const ctx = canvas.getContext('2d');
+
+            function resize() {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            let angle = 0;
+
+            function render() {
+                ctx.fillStyle = '#070b14';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw Grid Lines
+                ctx.strokeStyle = 'rgba(0, 240, 255, 0.08)';
+                ctx.lineWidth = 1;
+                const gridSize = 30;
+                for (let x = 0; x < canvas.width; x += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < canvas.height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+
+                // Draw Simulated 3D Cyber Cube / Virtual Room Output
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
+                const radius = 60 + Math.sin(angle) * 10;
+
+                ctx.save();
+                ctx.translate(cx, cy);
+
+                // Animated Holographic Rings
+                ctx.strokeStyle = '#00f0ff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#7000ff';
+                ctx.beginPath();
+                ctx.arc(0, 0, radius + 25, angle, angle + Math.PI * 1.5);
+                ctx.stroke();
+
+                // Center Icon/Text
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '12px Orbitron';
+                ctx.textAlign = 'center';
+                ctx.fillText('NEXUS VR REMOTE HOST', 0, 4);
+
+                ctx.fillStyle = 'rgba(0, 240, 255, 0.6)';
+                ctx.font = '10px monospace';
+                ctx.fillText(`TRANSCODING ${state.codec.toUpperCase()} @ ${state.fps} FPS`, 0, 22);
+
+                ctx.restore();
+
+                angle += 0.03;
+                requestAnimationFrame(render);
+            }
+            render();
+        }
+
+        // Chart.js Real-time Latency Chart Initialization
+        let perfChart = null;
+
+        function initChart() {
+            const ctx = document.getElementById('performance-chart').getContext('2d');
+            const initialData = Array(20).fill(18);
+
+            perfChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(20).fill(''),
+                    datasets: [{
+                        label: 'Frame Latency (ms)',
+                        data: initialData,
+                        borderColor: '#00f0ff',
+                        borderWidth: 2,
+                        backgroundColor: 'rgba(0, 240, 255, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            min: 5,
+                            max: 40,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#64748b', font: { size: 9 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Live Telemetry Simulation Updates
+        function updateTelemetrySim() {
+            let baseLatency = state.protocol === 'usb' ? 12 : 18;
+            if (state.preset === 'low') baseLatency -= 3;
+            if (state.fps === 120) baseLatency -= 2;
+
+            const jitter = (Math.random() * 2 - 1);
+            const totalLatency = Math.max(8, (baseLatency + jitter)).toFixed(1);
+            const encode = (3.2 + Math.random() * 0.8).toFixed(1);
+            const decode = (2.1 + Math.random() * 0.5).toFixed(1);
+            const ping = state.protocol === 'usb' ? (0.8 + Math.random() * 0.4).toFixed(1) : (3.1 + Math.random() * 1.2).toFixed(1);
+
+            document.getElementById('metric-latency').innerText = `${totalLatency} ms`;
+            document.getElementById('metric-enc-dec').innerText = `${encode}ms / ${decode}ms`;
+            document.getElementById('metric-ping').innerText = `${ping} ms`;
+            document.getElementById('graph-encode-val').innerText = `${encode} ms`;
+            document.getElementById('graph-jitter-val').innerText = `± ${(Math.random() * 0.5).toFixed(1)} ms`;
+            document.getElementById('device-ping').innerText = `${ping}ms`;
+
+            if (perfChart) {
+                perfChart.data.datasets[0].data.shift();
+                perfChart.data.datasets[0].data.push(parseFloat(totalLatency));
+                perfChart.update('none');
+            }
+        }
+
+        // Controller Stick & Touch Interactivity
+        function setupControllerInteractions() {
+            const leftArea = document.getElementById('stick-left-area');
+            const leftDot = document.getElementById('stick-left-dot');
+            const rightArea = document.getElementById('stick-right-area');
+            const rightDot = document.getElementById('stick-right-dot');
+
+            function handleStickMove(area, dot, e, trigBar, trigVal, gripBar, gripVal) {
+                const rect = area.getBoundingClientRect();
+                const x = e.clientX - rect.left - rect.width / 2;
+                const y = e.clientY - rect.top - rect.height / 2;
+                
+                const maxR = 20;
+                const dist = Math.min(maxR, Math.hypot(x, y));
+                const angle = Math.atan2(y, x);
+
+                const finalX = Math.cos(angle) * dist;
+                const finalY = Math.sin(angle) * dist;
+
+                dot.style.transform = `translate(${finalX}px, ${finalY}px)`;
+
+                // Simulate trigger pressure based on stick distance
+                const pressure = Math.round((dist / maxR) * 100);
+                document.getElementById(trigBar).style.width = `${pressure}%`;
+                document.getElementById(trigVal).innerText = `${pressure}%`;
+
+                document.getElementById(gripBar).style.width = `${Math.round(pressure * 0.8)}%`;
+                document.getElementById(gripVal).innerText = `${Math.round(pressure * 0.8)}%`;
+            }
+
+            function resetStick(dot, trigBar, trigVal, gripBar, gripVal) {
+                dot.style.transform = `translate(0px, 0px)`;
+                document.getElementById(trigBar).style.width = `0%`;
+                document.getElementById(trigVal).innerText = `0%`;
+                document.getElementById(gripBar).style.width = `0%`;
+                document.getElementById(gripVal).innerText = `0%`;
+            }
+
+            leftArea.addEventListener('mousemove', (e) => handleStickMove(leftArea, leftDot, e, 'left-trig-bar', 'left-trig-val', 'left-grip-bar', 'left-grip-val'));
+            leftArea.addEventListener('mouseleave', () => resetStick(leftDot, 'left-trig-bar', 'left-trig-val', 'left-grip-bar', 'left-grip-val'));
+
+            rightArea.addEventListener('mousemove', (e) => handleStickMove(rightArea, rightDot, e, 'right-trig-bar', 'right-trig-val', 'right-grip-bar', 'right-grip-val'));
+            rightArea.addEventListener('mouseleave', () => resetStick(rightDot, 'right-trig-bar', 'right-trig-val', 'right-grip-bar', 'right-grip-val'));
+        }
+
+        // Simple Toast Notification Popup
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-5 right-5 glass-card bg-slate-900/95 text-cyan-300 px-4 py-3 rounded-xl border border-cyan-500/40 text-xs font-mono shadow-2xl z-50 flex items-center space-x-2 transition-all duration-300 transform translate-y-10 opacity-0';
+            toast.innerHTML = `<i data-lucide="info" class="w-4 h-4 text-cyan-400"></i><span>${message}</span>`;
+            
+            document.body.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-10', 'opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        function toggleFullscreenCanvas() {
+            playSound('click');
+            const elem = document.getElementById('viewport-container');
+            if (!document.fullscreenElement) {
+                elem.requestFullscreen().catch(err => alert(`Error trying to enable fullscreen: ${err.message}`));
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Initialize Everything On Load
+        window.onload = function() {
+            lucide.createIcons();
+            renderGamesGrid();
+            initVirtualCanvas();
+            initChart();
+            setupControllerInteractions();
+
+            // Periodic Telemetry Loop
+            setInterval(updateTelemetrySim, 1000);
+        };
+    </script>
+</body>
+</html>
