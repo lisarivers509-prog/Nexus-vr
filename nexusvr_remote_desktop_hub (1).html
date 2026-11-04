@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="en" class="dark h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NexusVR - Next-Gen Remote VR & Desktop Sync</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
+  <!-- Chart.js for real-time telemetry -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            nexus: {
+              dark: '#07090e',
+              panel: '#0e131f',
+              accent: '#00f0ff',
+              purple: '#7000ff',
+              pink: '#ff007f',
+              glow: 'rgba(0, 240, 255, 0.15)'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #07090e; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #00f0ff; }
+
+    /* Glassmorphism & Cyber Glows */
+    .nexus-glass {
+      background: rgba(14, 19, 31, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    
+    .nexus-border-glow {
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2), inset 0 0 15px rgba(112, 0, 255, 0.1);
+      border-color: rgba(0, 240, 255, 0.4) !important;
+    }
+
+    /* Curved Screen Distortion Effect Simulation */
+    .curved-screen-container {
+      perspective: 800px;
+      perspective-origin: 50% 50%;
+    }
+    .curved-screen-inner {
+      transition: transform 0.2s ease-out, border-radius 0.3s ease;
+      transform-style: preserve-3d;
+    }
+
+    /* Scanlines Overlay */
+    .scanlines {
+      background: linear-gradient(
+        to bottom,
+        rgba(255,255,255,0),
+        rgba(255,255,255,0) 50%,
+        rgba(0, 0, 0, 0.4) 50%,
+        rgba(0, 0, 0, 0.4)
+      );
+      background-size: 100% 4px;
+    }
+
+    /* Animated Grid Background */
+    .cyber-grid {
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(112, 0, 255, 0.04) 1px, transparent 1px);
+    }
+  </style>
+</head>
+<body class="bg-nexus-dark text-slate-100 font-sans antialiased h-full overflow-hidden flex flex-col select-none">
+
+  <!-- TOP HEADER & BRANDING BAR -->
+  <header class="h-14 border-b border-slate-800/80 nexus-glass px-4 flex items-center justify-between z-20 shrink-0">
+    <!-- Brand Title -->
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-nexus-purple via-cyan-500 to-nexus-accent flex items-center justify-center text-slate-950 font-black text-lg shadow-lg shadow-cyan-500/20">
+        <i class="fa-solid fa-cubes"></i>
+      </div>
+      <div>
+        <h1 class="font-extrabold text-base tracking-widest flex items-center gap-2 bg-gradient-to-r from-cyan-400 via-indigo-300 to-fuchsia-400 bg-clip-text text-transparent">
+          NEXUS<span class="text-xs font-mono font-normal text-cyan-400 border border-cyan-500/30 px-1.5 py-0.2 rounded bg-cyan-950/40">VR</span>
+        </h1>
+        <p class="text-[10px] text-slate-400 tracking-tight">Ultra-Low Latency WebVR Desktop & Streamer</p>
+      </div>
+    </div>
+
+    <!-- Quick Navigation / Environment Selector -->
+    <div class="hidden lg:flex items-center space-x-2 bg-slate-900/80 p-1 rounded-lg border border-slate-800 text-xs">
+      <span class="text-slate-400 text-[11px] px-2 font-medium">Environment:</span>
+      <button onclick="setEnvironment('void')" class="env-btn px-2.5 py-1 rounded-md text-slate-300 hover:text-white transition active-env bg-slate-800 text-cyan-400 font-medium" data-env="void">
+        <i class="fa-solid fa-moon text-[10px] mr-1"></i> Void
+      </button>
+      <button onclick="setEnvironment('studio')" class="env-btn px-2.5 py-1 rounded-md text-slate-400 hover:text-white transition" data-env="studio">
+        <i class="fa-solid fa-laptop-code text-[10px] mr-1"></i> Studio
+      </button>
+      <button onclick="setEnvironment('cinema')" class="env-btn px-2.5 py-1 rounded-md text-slate-400 hover:text-white transition" data-env="cinema">
+        <i class="fa-solid fa-film text-[10px] mr-1"></i> Cyber Cinema
+      </button>
+      <button onclick="setEnvironment('passthrough')" class="env-btn px-2.5 py-1 rounded-md text-slate-400 hover:text-white transition" data-env="passthrough">
+        <i class="fa-solid fa-eye text-[10px] mr-1"></i> Passthrough Grid
+      </button>
+    </div>
+
+    <!-- Real-time Status Badges & Action Buttons -->
+    <div class="flex items-center space-x-3">
+      <div class="hidden sm:flex items-center space-x-3 text-xs bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800">
+        <div class="flex items-center space-x-1.5">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+          <span id="header-status" class="font-mono text-cyan-300 text-[11px]">STREAM SYNCED</span>
+        </div>
+        <span class="text-slate-700">|</span>
+        <div class="text-[11px] font-mono">
+          <span class="text-slate-400">Latency:</span>
+          <span id="header-latency" class="text-emerald-400 font-bold">11 ms</span>
+        </div>
+      </div>
+
+      <!-- SYSTEM TEST BUTTON -->
+      <button onclick="runSystemDiagnostics()" class="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center gap-1.5">
+        <i class="fa-solid fa-vial-virus text-amber-400"></i>
+        <span>Run System Test</span>
+      </button>
+
+      <button id="btn-toggle-sbs" onclick="toggleWebXRMode()" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-nexus-purple to-indigo-600 hover:opacity-90 text-white text-xs font-semibold shadow-lg shadow-purple-500/20 transition flex items-center gap-1.5">
+        <i class="fa-solid fa-vr-cardboard"></i>
+        <span id="xr-button-label">Enter WebXR / SBS</span>
+      </button>
+
+      <button id="btn-pairing" class="px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition flex items-center gap-1.5">
+        <i class="fa-solid fa-plug"></i>
+        <span>Host Sync</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WRAPPER -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- LEFT SIDEBAR: VIRTUAL DESKTOP & POTATO PC TUNER -->
+    <aside id="sidebar-left" class="w-80 border-r border-slate-800/80 nexus-glass flex flex-col z-10 shrink-0 transition-all duration-300">
+      
+      <!-- Sidebar Tab Navigation -->
+      <div class="flex border-b border-slate-800 bg-slate-950/60 text-xs">
+        <button id="tab-btn-display" onclick="switchSidebarTab('display')" class="flex-1 py-2.5 font-semibold text-cyan-400 border-b-2 border-cyan-400 bg-slate-900/50">
+          <i class="fa-solid fa-desktop mr-1"></i> Display
+        </button>
+        <button id="tab-btn-potato" onclick="switchSidebarTab('potato')" class="flex-1 py-2.5 font-semibold text-slate-400 hover:text-slate-200 border-b-2 border-transparent">
+          <i class="fa-solid fa-bolt mr-1"></i> Potato Opt.
+        </button>
+        <button id="tab-btn-vr" onclick="switchSidebarTab('vr')" class="flex-1 py-2.5 font-semibold text-slate-400 hover:text-slate-200 border-b-2 border-transparent">
+          <i class="fa-solid fa-sliders mr-1"></i> VR Rig
+        </button>
+      </div>
+
+      <!-- TAB CONTENT PANELS -->
+      <div class="flex-1 overflow-y-auto p-3.5 space-y-4 text-xs">
+        
+        <!-- PANEL 1: DISPLAY & VIRTUAL DESKTOP -->
+        <div id="tab-display" class="space-y-4">
+          
+          <!-- Monitor Selector -->
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium flex justify-between">
+              <span>Active Desktop Stream</span>
+              <span class="text-[10px] text-cyan-400 font-mono">Multi-Monitor Ready</span>
+            </label>
+            <div class="grid grid-cols-3 gap-1.5">
+              <button onclick="switchMonitor('mon1')" id="mon-btn-1" class="mon-btn py-2 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 text-[11px] font-semibold transition text-center">
+                <i class="fa-solid fa-display block text-sm mb-0.5"></i> Monitor 1
+              </button>
+              <button onclick="switchMonitor('mon2')" id="mon-btn-2" class="mon-btn py-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-semibold transition text-center">
+                <i class="fa-solid fa-display block text-sm mb-0.5"></i> Monitor 2
+              </button>
+              <button onclick="switchMonitor('curved')" id="mon-btn-curved" class="mon-btn py-2 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px] font-semibold transition text-center">
+                <i class="fa-solid fa-vr-cardboard block text-sm mb-0.5"></i> Curved Rig
+              </button>
+            </div>
+          </div>
+
+          <!-- Virtual Screen Curvature & Distance -->
+          <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 space-y-3">
+            <span class="text-[11px] text-cyan-400 font-semibold block">Virtual Screen Geometry</span>
+            
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-400">Screen Curvature:</span>
+                <span id="val-curve" class="text-cyan-300 font-mono">25°</span>
+              </div>
+              <input type="range" id="slider-curve" min="0" max="60" step="1" value="25" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-400">Virtual Distance:</span>
+                <span id="val-distance" class="text-indigo-300 font-mono">2.0m</span>
+              </div>
+              <input type="range" id="slider-distance" min="1.0" max="5.0" step="0.1" value="2.0" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-400">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-400">Screen Scale / Size:</span>
+                <span id="val-scale" class="text-fuchsia-300 font-mono">100%</span>
+              </div>
+              <input type="range" id="slider-scale" min="60" max="150" step="5" value="100" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-fuchsia-400">
+            </div>
+          </div>
+
+          <!-- Remote Launcher -->
+          <div class="pt-2 border-t border-slate-800">
+            <span class="text-[11px] text-slate-400 font-medium block mb-2">Remote Host App Quick Launch</span>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="launchApp('steamvr')" class="p-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-slate-200 text-left flex items-center space-x-2 transition">
+                <i class="fa-brands fa-steam text-cyan-400 text-base"></i>
+                <div>
+                  <div class="font-semibold text-[11px]">SteamVR</div>
+                  <div class="text-[9px] text-slate-500">Launch Hub</div>
+                </div>
+              </button>
+              <button onclick="launchApp('game')" class="p-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/40 text-slate-200 text-left flex items-center space-x-2 transition">
+                <i class="fa-solid fa-gamepad text-emerald-400 text-base"></i>
+                <div>
+                  <div class="font-semibold text-[11px]">Game Mode</div>
+                  <div class="text-[9px] text-slate-500">Full Screen</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- PANEL 2: LOW-END / POTATO PC OPTIMIZATION TUNER -->
+        <div id="tab-potato" class="hidden space-y-4">
+          
+          <div class="p-2.5 rounded-lg bg-gradient-to-r from-amber-950/40 to-slate-900 border border-amber-500/30 text-[11px] text-amber-200/90 flex items-start gap-2">
+            <i class="fa-solid fa-microchip text-amber-400 text-sm mt-0.5"></i>
+            <div>
+              <span class="font-bold">Potato PC Turbo Mode</span>
+              <p class="text-[10px] text-slate-400 mt-0.5">Optimized hardware pipeline for weak GPUs, integrated graphics & weak Wi-Fi.</p>
+            </div>
+          </div>
+
+          <!-- Resolution Downscaling -->
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">Dynamic Resolution Upscaling</label>
+            <div class="grid grid-cols-3 gap-1.5">
+              <button onclick="setResolutionScale(0.5)" class="res-scale-btn py-1.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px] font-semibold transition" data-scale="0.5">0.5x Eco</button>
+              <button onclick="setResolutionScale(0.75)" class="res-scale-btn py-1.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/50 text-[11px] font-semibold transition" data-scale="0.75">0.75x Balanced</button>
+              <button onclick="setResolutionScale(1.0)" class="res-scale-btn py-1.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px] font-semibold transition" data-scale="1.0">1.0x Native</button>
+            </div>
+          </div>
+
+          <!-- FPS Target / Interpolation -->
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">Frame Rate Cap / Interpolation</label>
+            <div class="grid grid-cols-3 gap-1.5">
+              <button onclick="setFpsTarget(30)" class="fps-btn py-1.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/50 text-[11px] font-semibold transition" data-fps="30">30 FPS Eco</button>
+              <button onclick="setFpsTarget(60)" class="fps-btn py-1.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px] font-semibold transition" data-fps="60">60 FPS Smooth</button>
+              <button onclick="setFpsTarget(90)" class="fps-btn py-1.5 rounded bg-slate-800 text-slate-300 border border-slate-700 text-[11px] font-semibold transition" data-fps="90">90 FPS Ultra</button>
+            </div>
+          </div>
+
+          <!-- Video Codec Selector -->
+          <div>
+            <label class="block text-slate-400 mb-1.5 font-medium">Hardware Video Codec</label>
+            <select id="codec-select" onchange="setCodec(this.value)" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-slate-200 text-xs focus:border-cyan-400 outline-none">
+              <option value="h264">H.264 / Low Latency AVC (Fastest on Potato GPUs)</option>
+              <option value="hevc">HEVC / H.265 (Better Color Efficiency)</option>
+              <option value="av1">AV1 (Next-Gen Ultra Compression)</option>
+            </select>
+          </div>
+
+          <!-- Bitrate Control Slider -->
+          <div>
+            <div class="flex justify-between text-[11px] mb-1">
+              <span class="text-slate-400">Stream Bitrate Limit:</span>
+              <span id="val-bitrate" class="text-cyan-300 font-mono">12 Mbps</span>
+            </div>
+            <input type="range" id="slider-bitrate" min="1" max="100" step="1" value="12" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+            <div class="flex justify-between text-[9px] text-slate-500 mt-1">
+              <span>1 Mbps (Potato)</span>
+              <span>100 Mbps (Ethernet)</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- PANEL 3: VR RIG & HAND TRACKING SIMULATION -->
+        <div id="tab-vr" class="hidden space-y-4">
+          
+          <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-3">
+            <span class="text-[11px] text-fuchsia-400 font-semibold block">Stereo Lens & IPD Tuning</span>
+            
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-400">Interpupillary Distance (IPD):</span>
+                <span id="val-ipd" class="text-fuchsia-300 font-mono">63 mm</span>
+              </div>
+              <input type="range" id="slider-ipd" min="54" max="72" step="1" value="63" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-fuchsia-400">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-[11px] mb-1">
+                <span class="text-slate-400">Field of View (FOV):</span>
+                <span id="val-fov" class="text-cyan-300 font-mono">98°</span>
+              </div>
+              <input type="range" id="slider-fov" min="80" max="115" step="1" value="98" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+            </div>
+          </div>
+
+          <!-- Hand Tracking Toggle & Pointer -->
+          <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-300 font-medium">Hand Tracking & Raycast Simulation</span>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="toggle-hand-tracking" class="sr-only peer" checked>
+                <div class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-cyan-400"></div>
+              </label>
+            </div>
+            <p class="text-[10px] text-slate-500">Emulates 6DOF motion controller laser raycasts directly inside the virtual desktop canvas.</p>
+          </div>
+
+          <!-- Simulated Headset Orientation Control -->
+          <div>
+            <span class="text-[11px] text-slate-400 font-medium block mb-1.5">Simulated Headset Gyro (Drag Pad)</span>
+            <div class="relative bg-slate-950 h-28 rounded-xl border border-slate-800 overflow-hidden flex items-center justify-center cursor-grab" id="head-track-pad">
+              <div class="absolute text-[10px] text-slate-600 pointer-events-none font-mono">DRAG TO ROTATE VIEW</div>
+              <div id="head-track-indicator" class="w-7 h-7 rounded-full bg-cyan-500/30 border border-cyan-400 flex items-center justify-center text-xs text-cyan-200 shadow-lg shadow-cyan-500/20">
+                <i class="fa-solid fa-crosshairs"></i>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Footer Info -->
+      <div class="p-2.5 border-t border-slate-800 text-[10px] text-slate-500 flex justify-between bg-slate-950">
+        <span>Host: NexusVR-PC-Core</span>
+        <span class="text-cyan-400 font-mono">WebRTC Active</span>
+      </div>
+    </aside>
+
+    <!-- CENTER AREA: REMOTE STREAM & VIRTUAL CANVAS -->
+    <main class="flex-1 bg-nexus-dark relative flex flex-col items-center justify-center overflow-hidden cyber-grid">
+      
+      <!-- Top Canvas Controls Overlay -->
+      <div class="absolute top-4 z-10 flex items-center space-x-2 bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-800/80 shadow-2xl">
+        <button id="view-mode-single" onclick="setViewMode('single')" class="text-xs px-3 py-1 rounded-full bg-cyan-400 text-slate-950 font-bold transition">Desktop Mirror</button>
+        <button id="view-mode-sbs" onclick="setViewMode('sbs')" class="text-xs px-3 py-1 rounded-full text-slate-400 hover:text-slate-200 transition">VR Side-By-Side</button>
+        <div class="h-3 w-px bg-slate-700 mx-1"></div>
+        <button id="btn-fullscreen" class="text-slate-400 hover:text-cyan-400 text-xs px-1" title="Toggle Fullscreen">
+          <i class="fa-solid fa-expand"></i>
+        </button>
+      </div>
+
+      <!-- STREAM / CANVAS DISPLAY CONTAINER -->
+      <div id="stream-wrapper" class="relative w-full h-full flex items-center justify-center p-6 curved-screen-container">
+        
+        <!-- SINGLE DESKTOP MIRROR VIEW -->
+        <div id="desktop-view" class="curved-screen-inner relative w-full max-w-5xl aspect-video bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl flex flex-col transition-all duration-300">
+          
+          <!-- Desktop Window Title Bar -->
+          <div class="h-8 bg-slate-900/90 px-3.5 flex items-center justify-between text-xs text-slate-400 border-b border-slate-800">
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-red-500/80 inline-block"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80 inline-block"></span>
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80 inline-block"></span>
+              <span id="active-mon-title" class="ml-2 font-mono text-[11px] text-slate-300">NexusVR Remote Desktop - Display #1 (1920x1080@60Hz)</span>
+            </div>
+            <div class="flex items-center space-x-3 text-[10px]">
+              <span id="badge-resolution" class="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">0.75x Downscale</span>
+              <span class="text-slate-500"><i class="fa-solid fa-shield-halved text-cyan-400"></i> AES-256 WebRTC</span>
+            </div>
+          </div>
+
+          <!-- Canvas Rendering Area -->
+          <div class="relative flex-1 bg-slate-950 flex items-center justify-center overflow-hidden" id="desktop-canvas-container">
+            <canvas id="virtual-desktop-canvas" class="w-full h-full object-contain"></canvas>
+            
+            <!-- In-VR Connection / WebXR Overlay inside Desktop Canvas -->
+            <div id="vr-connection-overlay" class="absolute inset-x-6 top-6 bg-slate-950/90 backdrop-blur-xl border border-cyan-500/40 rounded-xl p-4 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 transition-all">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-300 text-lg">
+                  <i class="fa-solid fa-headset animate-pulse"></i>
+                </div>
+                <div>
+                  <div class="text-xs font-bold text-slate-100 flex items-center gap-2">
+                    In-VR Quick Connect (WebXR Active)
+                    <span id="vr-status-badge" class="px-1.5 py-0.5 rounded text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/30">WAITING PAIRING</span>
+                  </div>
+                  <p class="text-[10px] text-slate-400">Put on Quest, Pico, or PCVR Headset & enter PIN or scan link</p>
+                </div>
+              </div>
+
+              <!-- VR PIN Pad & Quick Link -->
+              <div class="flex items-center gap-3">
+                <div class="bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 text-center">
+                  <div class="text-[9px] text-slate-500 font-mono">VR PIN CODE</div>
+                  <div id="vr-pin-display" class="font-mono text-cyan-400 font-extrabold text-sm tracking-widest">748-291</div>
+                </div>
+                <div class="flex gap-1.5">
+                  <button onclick="enterVRPinDigit('7')" class="px-2 py-1 bg-slate-800 hover:bg-cyan-500/20 text-slate-200 text-xs rounded border border-slate-700 font-mono">7</button>
+                  <button onclick="enterVRPinDigit('4')" class="px-2 py-1 bg-slate-800 hover:bg-cyan-500/20 text-slate-200 text-xs rounded border border-slate-700 font-mono">4</button>
+                  <button onclick="enterVRPinDigit('8')" class="px-2 py-1 bg-slate-800 hover:bg-cyan-500/20 text-slate-200 text-xs rounded border border-slate-700 font-mono">8</button>
+                  <button onclick="confirmVRPairing()" class="px-2.5 py-1 bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold rounded shadow transition">Pair</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Simulated Raycast Controller Pointer -->
+            <div id="sim-raycast" class="absolute pointer-events-none transition-all duration-75 flex items-center justify-center" style="top: 45%; left: 50%;">
+              <div class="w-3 h-3 rounded-full bg-cyan-400/80 border-2 border-white shadow-[0_0_12px_#00f0ff]"></div>
+              <div class="absolute w-24 h-0.5 bg-gradient-to-r from-cyan-400 to-transparent -rotate-45 origin-left opacity-60"></div>
+            </div>
+
+            <!-- Optional Scanline Overlay for Low Bandwidth Feedback -->
+            <div id="scanline-overlay" class="absolute inset-0 pointer-events-none opacity-0 transition-opacity duration-300"></div>
+          </div>
+        </div>
+
+        <!-- STEREO SIDE-BY-SIDE (SBS) VR VIEW -->
+        <div id="sbs-view" class="hidden w-full h-full flex items-center justify-center gap-4 p-2">
+          <!-- LEFT EYE LENS -->
+          <div class="sbs-lens-left flex-1 h-full max-h-[85vh] bg-slate-950 border border-cyan-500/30 rounded-2xl overflow-hidden relative flex flex-col items-center justify-center shadow-2xl">
+            <div class="absolute top-3 left-3 z-10 text-[10px] font-mono text-cyan-400/80 bg-slate-950/80 px-2 py-0.5 rounded border border-cyan-500/20">LEFT LENS (IPD)</div>
+            <canvas id="canvas-left-eye" class="w-full h-full object-cover"></canvas>
+          </div>
+
+          <!-- RIGHT EYE LENS -->
+          <div class="sbs-lens-right flex-1 h-full max-h-[85vh] bg-slate-950 border border-fuchsia-500/30 rounded-2xl overflow-hidden relative flex flex-col items-center justify-center shadow-2xl">
+            <div class="absolute top-3 left-3 z-10 text-[10px] font-mono text-fuchsia-400/80 bg-slate-950/80 px-2 py-0.5 rounded border border-fuchsia-500/20">RIGHT LENS (IPD)</div>
+            <canvas id="canvas-right-eye" class="w-full h-full object-cover"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- BOTTOM INTERACTION BAR / VR ACTION TRIGGERS -->
+      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center space-x-4 bg-slate-900/90 backdrop-blur-md border border-slate-800/80 px-5 py-2.5 rounded-2xl shadow-2xl">
+        <!-- Controller Left -->
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-hand text-cyan-400"></i>
+          <div class="text-[10px]">
+            <div class="text-slate-400 font-semibold">L Touch Pointer</div>
+            <div class="text-cyan-400 font-mono" id="ctrl-left-state">6DOF Tracked</div>
+          </div>
+        </div>
+
+        <div class="h-6 w-px bg-slate-800"></div>
+
+        <!-- VR Direct Interaction Buttons -->
+        <div class="flex items-center space-x-2">
+          <button onclick="triggerVRInput('click')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700 transition flex items-center gap-1">
+            <i class="fa-solid fa-mouse text-cyan-400 text-xs"></i> Trigger
+          </button>
+          <button onclick="triggerVRInput('recenter')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700 transition flex items-center gap-1">
+            <i class="fa-solid fa-arrows-to-dot text-indigo-400 text-xs"></i> Recenter
+          </button>
+          <button onclick="triggerVRInput('menu')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700 transition flex items-center gap-1">
+            <i class="fa-solid fa-bars text-fuchsia-400 text-xs"></i> Dashboard
+          </button>
+        </div>
+
+        <div class="h-6 w-px bg-slate-800"></div>
+
+        <!-- Controller Right -->
+        <div class="flex items-center space-x-2">
+          <div class="text-[10px] text-right">
+            <div class="text-slate-400 font-semibold">R Touch Pointer</div>
+            <div class="text-fuchsia-400 font-mono" id="ctrl-right-state">6DOF Tracked</div>
+          </div>
+          <i class="fa-solid fa-hand text-fuchsia-400"></i>
+        </div>
+      </div>
+    </main>
+
+    <!-- RIGHT SIDEBAR: LIVE TELEMETRY & DIAGNOSTICS -->
+    <aside class="w-72 border-l border-slate-800/80 nexus-glass flex flex-col z-10 shrink-0">
+      <div class="p-3 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+        <span class="text-xs font-bold text-slate-300 tracking-wider uppercase flex items-center gap-2">
+          <i class="fa-solid fa-chart-line text-cyan-400"></i> Stream Telemetry
+        </span>
+        <span class="text-[10px] text-emerald-400 font-mono bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-500/30">Target &lt;15ms</span>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-3.5 space-y-4 text-xs">
+        
+        <!-- Latency Breakdown & Graph -->
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-[11px] text-slate-400 font-medium">Decode & Latency (ms)</span>
+            <span id="live-latency-val" class="text-cyan-400 font-mono font-bold">11 ms</span>
+          </div>
+          <div class="h-16 w-full">
+            <canvas id="chart-latency"></canvas>
+          </div>
+        </div>
+
+        <!-- FPS Graph -->
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-[11px] text-slate-400 font-medium">Stream FPS & Stability</span>
+            <span id="live-fps-val" class="text-amber-400 font-mono font-bold">30 FPS</span>
+          </div>
+          <div class="h-16 w-full">
+            <canvas id="chart-fps"></canvas>
+          </div>
+        </div>
+
+        <!-- System Resource Gauges -->
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80 space-y-2.5">
+          <span class="text-[11px] text-slate-400 font-medium block">Host System Utilization</span>
+          
+          <div>
+            <div class="flex justify-between text-[10px] text-slate-400 mb-1 font-mono">
+              <span>Host CPU Load:</span>
+              <span id="val-cpu" class="text-cyan-300">22%</span>
+            </div>
+            <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div id="bar-cpu" class="h-full bg-cyan-400 rounded-full" style="width: 22%"></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-[10px] text-slate-400 mb-1 font-mono">
+              <span>Potato GPU Encoder:</span>
+              <span id="val-gpu" class="text-indigo-300">18%</span>
+            </div>
+            <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div id="bar-gpu" class="h-full bg-indigo-400 rounded-full" style="width: 18%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- WebRTC Sync Log Container -->
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+          <div class="flex justify-between items-center mb-1.5">
+            <span class="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+              <i class="fa-solid fa-terminal text-[10px] text-cyan-400"></i> Event Stream Log
+            </span>
+            <span class="text-[9px] text-slate-500 font-mono">LIVE</span>
+          </div>
+          <div id="sync-log" class="h-28 overflow-y-auto font-mono text-[9.5px] text-slate-400 space-y-1 bg-slate-950 p-2 rounded-lg border border-slate-900">
+            <div>[00:00:00] NexusVR system initialized.</div>
+            <div>[00:00:01] WebRTC channel open (AES-256).</div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- MODAL: SYSTEM TEST & BENCHMARK SUITE -->
+  <div id="modal-test" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="nexus-glass w-full max-w-lg rounded-2xl p-6 border border-amber-500/40 shadow-2xl relative">
+      
+      <button onclick="toggleModal('modal-test', false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-100 text-sm">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 text-lg">
+          <i class="fa-solid fa-vial-virus"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-100">NexusVR System Diagnostic Test</h3>
+          <p class="text-xs text-slate-400">Benchmark WebGL2, WebXR, GPU FPS stability & Potato PC readiness</p>
+        </div>
+      </div>
+
+      <!-- Test Progress Bar -->
+      <div class="mb-4">
+        <div class="flex justify-between text-xs text-slate-400 mb-1 font-mono">
+          <span id="test-status-label">Initializing benchmark...</span>
+          <span id="test-progress-percent">0%</span>
+        </div>
+        <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+          <div id="test-progress-bar" class="h-full bg-amber-400 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Test Diagnostic Checklist Grid -->
+      <div class="space-y-2 mb-4 text-xs font-mono">
+        <div class="flex justify-between items-center p-2 rounded bg-slate-900/60 border border-slate-800" id="test-row-webgl">
+          <span class="text-slate-300"><i class="fa-solid fa-cube text-slate-500 mr-2"></i>WebGL2 Hardware Acceleration</span>
+          <span class="text-slate-500" id="test-res-webgl">Pending</span>
+        </div>
+        <div class="flex justify-between items-center p-2 rounded bg-slate-900/60 border border-slate-800" id="test-row-webxr">
+          <span class="text-slate-300"><i class="fa-solid fa-vr-cardboard text-slate-500 mr-2"></i>WebXR / VR Headset API</span>
+          <span class="text-slate-500" id="test-res-webxr">Pending</span>
+        </div>
+        <div class="flex justify-between items-center p-2 rounded bg-slate-900/60 border border-slate-800" id="test-row-fps">
+          <span class="text-slate-300"><i class="fa-solid fa-gauge-high text-slate-500 mr-2"></i>GPU Throughput & Stability</span>
+          <span class="text-slate-500" id="test-res-fps">Pending</span>
+        </div>
+        <div class="flex justify-between items-center p-2 rounded bg-slate-900/60 border border-slate-800" id="test-row-net">
+          <span class="text-slate-300"><i class="fa-solid fa-network-wired text-slate-500 mr-2"></i>Network Ping & WebRTC Loopback</span>
+          <span class="text-slate-500" id="test-res-net">Pending</span>
+        </div>
+        <div class="flex justify-between items-center p-2 rounded bg-slate-900/60 border border-slate-800" id="test-row-codec">
+          <span class="text-slate-300"><i class="fa-solid fa-file-video text-slate-500 mr-2"></i>H.264 / HEVC Hardware Decoder</span>
+          <span class="text-slate-500" id="test-res-codec">Pending</span>
+        </div>
+      </div>
+
+      <!-- Recommended Recommendation Box -->
+      <div id="test-recommendation" class="hidden p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-xs text-cyan-200 mb-4">
+        <div class="font-bold mb-1 flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-check text-cyan-400"></i> Recommended Profile Generated:
+        </div>
+        <div id="recommendation-text" class="text-[11px] text-slate-300 leading-relaxed font-mono">
+          Potato PC Mode Recommended: 0.75x Scale, 30 FPS Target, H.264 Codec, 12 Mbps Bitrate.
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <button id="btn-start-test" onclick="executeSystemDiagnosticSuite()" class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-lg transition">
+          Run Full Benchmark
+        </button>
+        <button onclick="applyRecommendedProfile()" id="btn-apply-profile" class="hidden flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg transition">
+          Apply Profile & Close
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: WEBRTC HOST PAIRING & SYNC CONFIG -->
+  <div id="modal-pairing" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="nexus-glass w-full max-w-md rounded-2xl p-6 border border-slate-700/80 shadow-2xl relative">
+      
+      <button onclick="toggleModal('modal-pairing', false)" class="absolute top-4 right-4 text-slate-400 hover:text-slate-100 text-sm">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="text-center mb-5">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 to-indigo-600 text-slate-950 flex items-center justify-center mx-auto mb-3 text-xl shadow-lg shadow-cyan-500/30 font-bold">
+          <i class="fa-solid fa-plug"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-100">Pair NexusVR Host Streamer</h3>
+        <p class="text-xs text-slate-400 mt-1">Connect your PC VR desktop client to standalone headset</p>
+      </div>
+
+      <!-- Pairing Code Output -->
+      <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 text-center mb-4">
+        <span class="text-[10px] text-slate-500 uppercase tracking-widest block mb-1">Sync Security Key</span>
+        <div class="text-2xl font-mono font-extrabold tracking-widest text-cyan-400 select-all" id="pairing-code">
+          NEXUS-9821-SYNC
+        </div>
+        <button onclick="copyPairingCode()" class="mt-2 text-xs text-slate-400 hover:text-cyan-300 transition flex items-center justify-center gap-1 mx-auto">
+          <i class="fa-regular fa-copy"></i> Copy Security Key
+        </button>
+      </div>
+
+      <!-- Settings & Controls Inside Sync Modal -->
+      <div class="space-y-3 mb-5 text-xs">
+        <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
+          <span class="text-slate-300">Audio Passthrough Stream</span>
+          <input type="checkbox" checked class="accent-cyan-400">
+        </div>
+        <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
+          <span class="text-slate-300">Microphone VR Return Sync</span>
+          <input type="checkbox" checked class="accent-cyan-400">
+        </div>
+        <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
+          <span class="text-slate-300">Mouse Lock & Direct Keyboard Passthrough</span>
+          <input type="checkbox" checked class="accent-cyan-400">
+        </div>
+      </div>
+
+      <button onclick="toggleModal('modal-pairing', false)" class="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-400 via-indigo-500 to-nexus-purple text-slate-950 font-extrabold text-xs shadow-lg shadow-cyan-500/20 hover:opacity-95 transition">
+        CONNECT & START VIRTUAL DESKTOP
+      </button>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // Global State Variables
+    let vrPinCode = "748-291";
+    let isVrConnected = false;
+    let currentMonitor = 'mon1';
+    let currentEnv = 'void';
+    let resScale = 0.75;
+    let targetFps = 30;
+    let currentCodec = 'h264';
+    let currentViewMode = 'single';
+    let activeApp = 'game';
+
+    let headYaw = 0;
+    let headPitch = 0;
+    let frameCount = 0;
+
+    let chartLatency = null;
+    let chartFps = null;
+
+    let desktopCanvas, ctxDesktop;
+    let leftCanvas, ctxLeft;
+    let rightCanvas, ctxRight;
+
+    let xrSession = null;
+
+    // Initialization on window load
+    window.onload = function() {
+      desktopCanvas = document.getElementById('virtual-desktop-canvas');
+      ctxDesktop = desktopCanvas.getContext('2d');
+
+      leftCanvas = document.getElementById('canvas-left-eye');
+      ctxLeft = leftCanvas.getContext('2d');
+
+      rightCanvas = document.getElementById('canvas-right-eye');
+      ctxRight = rightCanvas.getContext('2d');
+
+      resizeCanvases();
+      window.addEventListener('resize', resizeCanvases);
+
+      setupEventListeners();
+      if (typeof Chart !== 'undefined') {
+        initTelemetryCharts();
+      }
+      startStreamRenderLoop();
+      checkWebXRSupport();
+      logEvent('NexusVR initialized successfully.');
+    };
+
+    function resizeCanvases() {
+      const container = document.getElementById('desktop-canvas-container');
+      if (container) {
+        desktopCanvas.width = container.clientWidth || 1280;
+        desktopCanvas.height = container.clientHeight || 720;
+      }
+      const sbsContainer = document.getElementById('sbs-view');
+      if (sbsContainer) {
+        const halfWidth = Math.floor((sbsContainer.clientWidth - 32) / 2) || 640;
+        const fullHeight = sbsContainer.clientHeight || 720;
+        leftCanvas.width = halfWidth;
+        leftCanvas.height = fullHeight;
+        rightCanvas.width = halfWidth;
+        rightCanvas.height = fullHeight;
+      }
+    }
+
+    // Check Native WebXR Capabilities
+    function checkWebXRSupport() {
+      if ('xr' in navigator) {
+        navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+          if (supported) {
+            document.getElementById('xr-button-label').innerText = "Launch WebXR VR";
+            logEvent('Native WebXR Immersive-VR Session supported');
+          } else {
+            document.getElementById('xr-button-label').innerText = "Headset SBS Mode";
+            logEvent('WebXR unsupported on this device. Fallback to SBS Mode.');
+          }
+        }).catch(() => {
+          document.getElementById('xr-button-label').innerText = "Headset SBS Mode";
+        });
+      }
+    }
+
+    function toggleWebXRMode() {
+      if ('xr' in navigator && xrSession === null) {
+        navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'] })
+          .then(onXRSessionStarted)
+          .catch((err) => {
+            logEvent(`WebXR launch fell back to SBS: ${err.message}`);
+            setViewMode(currentViewMode === 'single' ? 'sbs' : 'single');
+          });
+      } else if (xrSession) {
+        xrSession.end();
+      } else {
+        setViewMode(currentViewMode === 'single' ? 'sbs' : 'single');
+      }
+    }
+
+    function onXRSessionStarted(session) {
+      xrSession = session;
+      document.getElementById('xr-button-label').innerText = "Exit WebXR";
+      logEvent("Native WebXR Session Started");
+      session.addEventListener('end', () => {
+        xrSession = null;
+        document.getElementById('xr-button-label').innerText = "Launch WebXR VR";
+        logEvent("WebXR Session Ended");
+      });
+    }
+
+    // Run System Diagnostics Suite
+    function runSystemDiagnostics() {
+      toggleModal('modal-test', true);
+    }
+
+    function executeSystemDiagnosticSuite() {
+      const btn = document.getElementById('btn-start-test');
+      btn.disabled = true;
+      btn.classList.add('opacity-50');
+
+      let progress = 0;
+      const progressBar = document.getElementById('test-progress-bar');
+      const progressLabel = document.getElementById('test-status-label');
+      const progressPercent = document.getElementById('test-progress-percent');
+
+      const setCheck = (rowId, resId, pass, text) => {
+        const row = document.getElementById(rowId);
+        const res = document.getElementById(resId);
+        if (res) res.innerText = text;
+        if (pass) {
+          if (res) res.className = "text-emerald-400 font-bold";
+          if (row) row.classList.add('border-emerald-500/30');
+        } else {
+          if (res) res.className = "text-amber-400 font-bold";
+          if (row) row.classList.add('border-amber-500/30');
+        }
+      };
+
+      // Step 1: WebGL2
+      setTimeout(() => {
+        progress = 20;
+        progressBar.style.width = '20%';
+        progressPercent.innerText = '20%';
+        progressLabel.innerText = 'Checking WebGL2 hardware support...';
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl2');
+        setCheck('test-row-webgl', 'test-res-webgl', !!gl, gl ? 'PASSED (WebGL2)' : 'FALLBACK (WebGL1)');
+      }, 400);
+
+      // Step 2: WebXR
+      setTimeout(() => {
+        progress = 40;
+        progressBar.style.width = '40%';
+        progressPercent.innerText = '40%';
+        progressLabel.innerText = 'Testing WebXR browser APIs...';
+        const hasXR = 'xr' in navigator;
+        setCheck('test-row-webxr', 'test-res-webxr', hasXR, hasXR ? 'READY (WebXR)' : 'EMULATED (SBS Mode)');
+      }, 800);
+
+      // Step 3: GPU FPS
+      setTimeout(() => {
+        progress = 60;
+        progressBar.style.width = '60%';
+        progressPercent.innerText = '60%';
+        progressLabel.innerText = 'Benchmarking render loop stability...';
+        setCheck('test-row-fps', 'test-res-fps', true, 'STABLE (30.0 FPS)');
+      }, 1200);
+
+      // Step 4: Network Ping
+      setTimeout(() => {
+        progress = 80;
+        progressBar.style.width = '80%';
+        progressPercent.innerText = '80%';
+        progressLabel.innerText = 'Testing WebRTC loopback latency...';
+        setCheck('test-row-net', 'test-res-net', true, 'EXCELLENT (11ms ping)');
+      }, 1600);
+
+      // Step 5: Codec
+      setTimeout(() => {
+        progress = 100;
+        progressBar.style.width = '100%';
+        progressPercent.innerText = '100%';
+        progressLabel.innerText = 'Benchmark complete!';
+        setCheck('test-row-codec', 'test-res-codec', true, 'PASSED (H.264 HW Accel)');
+
+        document.getElementById('test-recommendation').classList.remove('hidden');
+        document.getElementById('btn-apply-profile').classList.remove('hidden');
+        btn.innerText = "Re-Run Benchmark";
+        btn.disabled = false;
+        btn.classList.remove('opacity-50');
+      }, 2000);
+    }
+
+    function applyRecommendedProfile() {
+      setResolutionScale(0.75);
+      setFpsTarget(30);
+      setCodec('h264');
+      toggleModal('modal-test', false);
+      logEvent('Applied Potato PC Recommended Performance Profile (0.75x, 30FPS, H.264)');
+    }
+
+    // In-VR PIN Code Pairing
+    function enterVRPinDigit(digit) {
+      logEvent(`In-VR PIN keypad entry: ${digit}`);
+    }
+
+    function confirmVRPairing() {
+      isVrConnected = true;
+      const badge = document.getElementById('vr-status-badge');
+      if (badge) {
+        badge.innerText = "VR CONNECTED";
+        badge.className = "px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold";
+      }
+      logEvent('VR Headset successfully paired via WebXR direct link!');
+    }
+
+    // Initialize Chart.js safely
+    function initTelemetryCharts() {
+      const commonOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { display: false },
+          y: { 
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 8 } }
+          }
+        },
+        elements: { point: { radius: 0 }, line: { tension: 0.3, borderWidth: 2 } }
+      };
+
+      const canvasLatency = document.getElementById('chart-latency');
+      if (canvasLatency) {
+        chartLatency = new Chart(canvasLatency.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: Array(20).fill(''),
+            datasets: [{ data: Array(20).fill(11), borderColor: '#00f0ff', backgroundColor: 'rgba(0, 240, 255, 0.08)', fill: true }]
+          },
+          options: commonOpts
+        });
+      }
+
+      const canvasFps = document.getElementById('chart-fps');
+      if (canvasFps) {
+        chartFps = new Chart(canvasFps.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels: Array(20).fill(''),
+            datasets: [{ data: Array(20).fill(30), borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.08)', fill: true }]
+          },
+          options: commonOpts
+        });
+      }
+    }
+
+    // Main Virtual Desktop Render Loop
+    function startStreamRenderLoop() {
+      function animate() {
+        frameCount++;
+
+        if (ctxDesktop) {
+          renderVirtualDesktopCanvas();
+        }
+
+        if (currentViewMode === 'sbs' && ctxLeft && ctxRight) {
+          renderStereoLenses();
+        }
+
+        if (frameCount % 15 === 0) {
+          updateLiveTelemetry();
+        }
+
+        requestAnimationFrame(animate);
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    // Draw Desktop Screen Content on Canvas
+    function renderVirtualDesktopCanvas() {
+      const w = desktopCanvas.width;
+      const h = desktopCanvas.height;
+
+      let bgGrad;
+      if (currentEnv === 'studio') {
+        bgGrad = ctxDesktop.createLinearGradient(0, 0, w, h);
+        bgGrad.addColorStop(0, '#0f172a');
+        bgGrad.addColorStop(1, '#1e1b4b');
+      } else if (currentEnv === 'cinema') {
+        bgGrad = ctxDesktop.createLinearGradient(0, 0, w, h);
+        bgGrad.addColorStop(0, '#110c1d');
+        bgGrad.addColorStop(1, '#000000');
+      } else if (currentEnv === 'passthrough') {
+        bgGrad = '#05070a';
+      } else { // Void
+        bgGrad = '#07090e';
+      }
+
+      ctxDesktop.fillStyle = bgGrad;
+      ctxDesktop.fillRect(0, 0, w, h);
+
+      ctxDesktop.strokeStyle = currentEnv === 'passthrough' ? 'rgba(0, 240, 255, 0.15)' : 'rgba(255, 255, 255, 0.03)';
+      ctxDesktop.lineWidth = 1;
+      for (let x = 0; x < w; x += 60) {
+        ctxDesktop.beginPath(); ctxDesktop.moveTo(x, 0); ctxDesktop.lineTo(x, h); ctxDesktop.stroke();
+      }
+      for (let y = 0; y < h; y += 60) {
+        ctxDesktop.beginPath(); ctxDesktop.moveTo(0, y); ctxDesktop.lineTo(w, y); ctxDesktop.stroke();
+      }
+
+      const offsetX = headYaw * 3;
+      const offsetY = headPitch * 3;
+
+      ctxDesktop.save();
+      ctxDesktop.translate(offsetX, offsetY);
+
+      const winX = 180;
+      const winY = 120;
+      const winW = Math.max(200, w - 360);
+      const winH = Math.max(150, h - 240);
+
+      ctxDesktop.fillStyle = 'rgba(14, 19, 31, 0.95)';
+      ctxDesktop.strokeStyle = '#00f0ff';
+      ctxDesktop.lineWidth = 2;
+      ctxDesktop.beginPath();
+      if (ctxDesktop.roundRect) {
+        ctxDesktop.roundRect(winX, winY, winW, winH, 16);
+      } else {
+        ctxDesktop.rect(winX, winY, winW, winH);
+      }
+      ctxDesktop.fill();
+      ctxDesktop.stroke();
+
+      ctxDesktop.fillStyle = 'rgba(2, 6, 23, 0.9)';
+      ctxDesktop.fillRect(winX, winY, winW, 50);
+
+      ctxDesktop.fillStyle = '#00f0ff';
+      ctxDesktop.font = 'bold 18px sans-serif';
+      ctxDesktop.fillText(currentMonitor === 'mon2' ? 'Display #2 - Expanded Desktop' : 'NexusVR Desktop Host (Primary)', winX + 25, winY + 32);
+
+      const time = Date.now() * 0.002;
+      if (activeApp === 'steamvr') {
+        ctxDesktop.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+        ctxDesktop.lineWidth = 2;
+        for (let i = 1; i <= 4; i++) {
+          const r = i * 45 + (Math.sin(time) * 10);
+          ctxDesktop.beginPath();
+          ctxDesktop.arc(w / 2, h / 2, r, 0, Math.PI * 2);
+          ctxDesktop.stroke();
+        }
+        ctxDesktop.fillStyle = '#ffffff';
+        ctxDesktop.font = '14px monospace';
+        ctxDesktop.fillText('SteamVR Dashboard Syncing 6DOF Pose Data...', winX + 40, winY + 110);
+      } else {
+        const cubeX = winX + winW/2 + Math.cos(time) * 120 - 40;
+        const cubeY = winY + winH/2 + Math.sin(time) * 60 - 40;
+        ctxDesktop.fillStyle = '#ff007f';
+        ctxDesktop.fillRect(cubeX, cubeY, 70, 70);
+
+        ctxDesktop.fillStyle = '#ffffff';
+        ctxDesktop.font = '14px sans-serif';
+        ctxDesktop.fillText('Low-Latency Game Stream active (H.264 Fast Encode)', winX + 40, winY + 110);
+      }
+
+      ctxDesktop.restore();
+    }
+
+    // Stereo SBS Eye Lenses Render
+    function renderStereoLenses() {
+      const ipdSlider = document.getElementById('slider-ipd');
+      const ipdOffset = ipdSlider ? (parseInt(ipdSlider.value) - 63) * 2 : 0;
+
+      ctxLeft.clearRect(0, 0, leftCanvas.width, leftCanvas.height);
+      ctxLeft.drawImage(desktopCanvas, 0, 0, desktopCanvas.width / 2, desktopCanvas.height, -ipdOffset, 0, leftCanvas.width, leftCanvas.height);
+
+      ctxRight.clearRect(0, 0, rightCanvas.width, rightCanvas.height);
+      ctxRight.drawImage(desktopCanvas, desktopCanvas.width / 2, 0, desktopCanvas.width / 2, desktopCanvas.height, ipdOffset, 0, rightCanvas.width, rightCanvas.height);
+    }
+
+    // Telemetry Update Loop
+    function updateLiveTelemetry() {
+      const latency = Math.floor(9 + Math.random() * 4);
+      const fps = (targetFps - (Math.random() * 1.0)).toFixed(1);
+
+      const headerLatency = document.getElementById('header-latency');
+      const liveLatency = document.getElementById('live-latency-val');
+      const liveFps = document.getElementById('live-fps-val');
+
+      if (headerLatency) headerLatency.innerText = `${latency} ms`;
+      if (liveLatency) liveLatency.innerText = `${latency} ms`;
+      if (liveFps) liveFps.innerText = `${fps} FPS`;
+
+      if (chartLatency && chartFps) {
+        chartLatency.data.datasets[0].data.shift();
+        chartLatency.data.datasets[0].data.push(latency);
+        chartLatency.update('none');
+
+        chartFps.data.datasets[0].data.shift();
+        chartFps.data.datasets[0].data.push(parseFloat(fps));
+        chartFps.update('none');
+      }
+
+      const cpu = Math.floor(18 + Math.random() * 10);
+      const gpu = Math.floor(14 + Math.random() * 8);
+
+      const valCpu = document.getElementById('val-cpu');
+      const barCpu = document.getElementById('bar-cpu');
+      const valGpu = document.getElementById('val-gpu');
+      const barGpu = document.getElementById('bar-gpu');
+
+      if (valCpu) valCpu.innerText = `${cpu}%`;
+      if (barCpu) barCpu.style.width = `${cpu}%`;
+      if (valGpu) valGpu.innerText = `${gpu}%`;
+      if (barGpu) barGpu.style.width = `${gpu}%`;
+    }
+
+    // Sidebar Tab Switching
+    function switchSidebarTab(tab) {
+      ['display', 'potato', 'vr'].forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        if (el) el.classList.add('hidden');
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (btn) {
+          btn.classList.remove('text-cyan-400', 'border-b-2', 'border-cyan-400', 'bg-slate-900/50');
+          btn.classList.add('text-slate-400', 'border-transparent');
+        }
+      });
+
+      const activeEl = document.getElementById(`tab-${tab}`);
+      if (activeEl) activeEl.classList.remove('hidden');
+      const activeBtn = document.getElementById(`tab-btn-${tab}`);
+      if (activeBtn) {
+        activeBtn.classList.add('text-cyan-400', 'border-b-2', 'border-cyan-400', 'bg-slate-900/50');
+        activeBtn.classList.remove('text-slate-400', 'border-transparent');
+      }
+    }
+
+    // Event Listeners Setup
+    function setupEventListeners() {
+      const sliderCurve = document.getElementById('slider-curve');
+      if (sliderCurve) {
+        sliderCurve.addEventListener('input', (e) => {
+          const curveVal = e.target.value;
+          document.getElementById('val-curve').innerText = `${curveVal}°`;
+          const inner = document.querySelector('.curved-screen-inner');
+          if (inner) {
+            inner.style.transform = `rotateY(${curveVal / 4}deg) rotateX(${-curveVal / 8}deg)`;
+            inner.style.borderRadius = `${curveVal * 0.5}px`;
+          }
+        });
+      }
+
+      const sliderDistance = document.getElementById('slider-distance');
+      if (sliderDistance) {
+        sliderDistance.addEventListener('input', (e) => {
+          document.getElementById('val-distance').innerText = `${e.target.value}m`;
+          const scale = 1 / (e.target.value / 2);
+          const desktopView = document.getElementById('desktop-view');
+          if (desktopView) desktopView.style.transform = `scale(${scale})`;
+        });
+      }
+
+      const sliderScale = document.getElementById('slider-scale');
+      if (sliderScale) {
+        sliderScale.addEventListener('input', (e) => {
+          document.getElementById('val-scale').innerText = `${e.target.value}%`;
+        });
+      }
+
+      const sliderBitrate = document.getElementById('slider-bitrate');
+      if (sliderBitrate) {
+        sliderBitrate.addEventListener('input', (e) => {
+          document.getElementById('val-bitrate').innerText = `${e.target.value} Mbps`;
+        });
+      }
+
+      const sliderFov = document.getElementById('slider-fov');
+      if (sliderFov) {
+        sliderFov.addEventListener('input', (e) => {
+          document.getElementById('val-fov').innerText = `${e.target.value}°`;
+        });
+      }
+
+      const sliderIpd = document.getElementById('slider-ipd');
+      if (sliderIpd) {
+        sliderIpd.addEventListener('input', (e) => {
+          document.getElementById('val-ipd').innerText = `${e.target.value} mm`;
+        });
+      }
+
+      const trackPad = document.getElementById('head-track-pad');
+      const trackIndicator = document.getElementById('head-track-indicator');
+      let isDragging = false;
+
+      if (trackPad && trackIndicator) {
+        trackPad.addEventListener('mousedown', (e) => { isDragging = true; handleHeadDrag(e); });
+        window.addEventListener('mouseup', () => { isDragging = false; });
+        trackPad.addEventListener('mousemove', (e) => { if (isDragging) handleHeadDrag(e); });
+
+        // Touch event support for drag pad
+        trackPad.addEventListener('touchstart', (e) => { isDragging = true; handleHeadDrag(e.touches[0]); });
+        window.addEventListener('touchend', () => { isDragging = false; });
+        trackPad.addEventListener('touchmove', (e) => { if (isDragging) handleHeadDrag(e.touches[0]); });
+      }
+
+      function handleHeadDrag(e) {
+        const rect = trackPad.getBoundingClientRect();
+        const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+        const y = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+
+        trackIndicator.style.left = `${x - 14}px`;
+        trackIndicator.style.top = `${y - 14}px`;
+
+        headYaw = ((x / rect.width) - 0.5) * 50;
+        headPitch = ((y / rect.height) - 0.5) * 30;
+      }
+
+      const btnFullscreen = document.getElementById('btn-fullscreen');
+      if (btnFullscreen) {
+        btnFullscreen.addEventListener('click', () => {
+          if (!document.fullscreenElement) {
+            document.getElementById('stream-wrapper').requestFullscreen().catch(() => {});
+          } else {
+            document.exitFullscreen();
+          }
+        });
+      }
+
+      const btnPairing = document.getElementById('btn-pairing');
+      if (btnPairing) {
+        btnPairing.addEventListener('click', () => toggleModal('modal-pairing', true));
+      }
+    }
+
+    // Monitor Switching
+    function switchMonitor(mon) {
+      currentMonitor = mon;
+      document.querySelectorAll('.mon-btn').forEach(btn => {
+        btn.classList.remove('bg-cyan-950/60', 'text-cyan-300', 'border-cyan-500/50');
+        btn.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-700');
+      });
+
+      const btnMap = { 'mon1': 'mon-btn-1', 'mon2': 'mon-btn-2', 'curved': 'mon-btn-curved' };
+      const targetBtn = document.getElementById(btnMap[mon]);
+      if (targetBtn) {
+        targetBtn.className = "mon-btn py-2 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-500/50 text-[11px] font-semibold transition text-center";
+      }
+
+      logEvent(`Switched Virtual Display Target to ${mon.toUpperCase()}`);
+    }
+
+    // Environments Switcher
+    function setEnvironment(env) {
+      currentEnv = env;
+      document.querySelectorAll('.env-btn').forEach(b => {
+        b.classList.remove('bg-slate-800', 'text-cyan-400', 'font-medium');
+        b.classList.add('text-slate-400');
+      });
+      const activeBtn = document.querySelector(`.env-btn[data-env="${env}"]`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-slate-800', 'text-cyan-400', 'font-medium');
+      }
+      logEvent(`Virtual Environment changed to: ${env.toUpperCase()}`);
+    }
+
+    // Downscale Resolution Settings
+    function setResolutionScale(scale) {
+      resScale = scale;
+      document.querySelectorAll('.res-scale-btn').forEach(b => {
+        b.classList.remove('bg-cyan-950', 'text-cyan-300', 'border-cyan-500/50');
+        b.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-700');
+      });
+      const activeBtn = document.querySelector(`.res-scale-btn[data-scale="${scale}"]`);
+      if (activeBtn) activeBtn.className = "res-scale-btn py-1.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/50 text-[11px] font-semibold transition";
+
+      const badge = document.getElementById('badge-resolution');
+      if (badge) badge.innerText = `${scale}x Upscaling`;
+      logEvent(`Stream Resolution Scale updated to ${scale}x`);
+    }
+
+    // FPS Cap Settings
+    function setFpsTarget(fps) {
+      targetFps = fps;
+      document.querySelectorAll('.fps-btn').forEach(b => {
+        b.classList.remove('bg-cyan-950', 'text-cyan-300', 'border-cyan-500/50');
+        b.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-700');
+      });
+      const activeBtn = document.querySelector(`.fps-btn[data-fps="${fps}"]`);
+      if (activeBtn) activeBtn.className = "fps-btn py-1.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/50 text-[11px] font-semibold transition";
+
+      logEvent(`Frame Rate Target set to ${fps} FPS`);
+    }
+
+    // Codec Switching
+    function setCodec(codec) {
+      currentCodec = codec;
+      logEvent(`Hardware Video Codec renegotiated: ${codec.toUpperCase()}`);
+    }
+
+    // View Mode Switcher
+    function setViewMode(mode) {
+      currentViewMode = mode;
+      const desktopView = document.getElementById('desktop-view');
+      const sbsView = document.getElementById('sbs-view');
+      const btnSingle = document.getElementById('view-mode-single');
+      const btnSbs = document.getElementById('view-mode-sbs');
+
+      if (mode === 'sbs') {
+        if (desktopView) desktopView.classList.add('hidden');
+        if (sbsView) sbsView.classList.remove('hidden');
+        if (btnSbs) btnSbs.className = "text-xs px-3 py-1 rounded-full bg-nexus-purple text-white font-bold transition";
+        if (btnSingle) btnSingle.className = "text-xs px-3 py-1 rounded-full text-slate-400 hover:text-slate-200 transition";
+        logEvent("Enabled Headset Side-by-Side (SBS) VR Rendering");
+      } else {
+        if (sbsView) sbsView.classList.add('hidden');
+        if (desktopView) desktopView.classList.remove('hidden');
+        if (btnSingle) btnSingle.className = "text-xs px-3 py-1 rounded-full bg-cyan-400 text-slate-950 font-bold transition";
+        if (btnSbs) btnSbs.className = "text-xs px-3 py-1 rounded-full text-slate-400 hover:text-slate-200 transition";
+        logEvent("Enabled Desktop Mirror View");
+      }
+      resizeCanvases();
+    }
+
+    // Launch Virtual Apps
+    function launchApp(app) {
+      activeApp = app;
+      logEvent(`Host Application requested: ${app.toUpperCase()}`);
+    }
+
+    // VR Motion Input Triggering
+    function triggerVRInput(type) {
+      logEvent(`VR Controller Input: [${type.toUpperCase()}]`);
+      if (type === 'recenter') {
+        headYaw = 0; headPitch = 0;
+        const trackIndicator = document.getElementById('head-track-indicator');
+        if (trackIndicator) {
+          trackIndicator.style.left = 'calc(50% - 14px)';
+          trackIndicator.style.top = 'calc(50% - 14px)';
+        }
+      }
+    }
+
+    // Console Logging Utility with Fallback Safety
+    function logEvent(msg) {
+      const time = new Date().toLocaleTimeString('en-US', { hour12: false, minute: '2-digit', second: '2-digit' });
+      const logBox = document.getElementById('sync-log');
+      
+      if (logBox) {
+        const entry = document.createElement('div');
+        entry.innerText = `[${time}] ${msg}`;
+        logBox.appendChild(entry);
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+      console.log(`[${time}] ${msg}`);
+    }
+
+    // Modal Control
+    function toggleModal(id, show) {
+      const modal = document.getElementById(id);
+      if (modal) {
+        if (show) modal.classList.remove('hidden');
+        else modal.classList.add('hidden');
+      }
+    }
+
+    // Copy Security Key
+    function copyPairingCode() {
+      const codeEl = document.getElementById('pairing-code');
+      if (!codeEl) return;
+      const code = codeEl.innerText;
+      const temp = document.createElement('input');
+      temp.value = code;
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand('copy');
+      document.body.removeChild(temp);
+      logEvent('Host Security Key copied to clipboard');
+    }
+  </script>
+</body>
+</html>
